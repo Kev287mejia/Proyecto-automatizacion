@@ -1,0 +1,16 @@
+# Entornos virtuales
+venv/
+env/
+.env
+
+# Archivos compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Datos y reportes (Evitar subir data sensible de la universidad)
+*.json
+*.xlsx
+*.docx
+*.pdf
+log.txt
