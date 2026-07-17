@@ -23,10 +23,10 @@ class BlueprintValidator:
         Retorna True si el Blueprint es estructuralmente válido y puede continuar.
         Lanza CriticalBlueprintError si falta un componente insalvable.
         """
-        word_target = inventory.get("word_template")
-        excel_target = inventory.get("excel_template")
-        historicals = inventory.get("historicals", [])
-        excel_data = inventory.get("excel_data")
+        word_target = inventory.get("plantilla_word")
+        excel_target = inventory.get("plantilla_excel")
+        historicals = inventory.get("informes", [])
+        excel_data = inventory.get("excel_actual")
 
         logging.info("--- Validación del Blueprint ---")
         

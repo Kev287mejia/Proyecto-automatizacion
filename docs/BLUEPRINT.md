@@ -26,29 +26,32 @@ Tras una ejecución exitosa, el sistema producirá en un directorio de salida ai
 5. `execution.log`: Registro técnico detallado (logs a nivel de sistema) para depuración y monitoreo.
 
 ## 5. Flujo de Procesamiento
-El procesamiento sigue un pipeline unidireccional y secuencial:
-1. **Fase de Ingesta y Validación:** Lectura de las entradas, verificación de integridad de archivos y validación de esquemas/marcadores en plantillas.
-2. **Fase de Extracción y Limpieza:** Parseo del Excel del mes. Limpieza de datos nulos o anómalos.
-3. **Fase de Transformación (ETL):** Cálculo de métricas estadísticas. Generación del `Reporte_Estadistico.xlsx` y renderizado de imágenes en el directorio `Graficos/`.
-4. **Fase de Análisis de IA:**
-   - Vectorización y recuperación (RAG) de informes históricos.
-   - Construcción de prompts contextuales inyectando métricas del mes y contexto histórico.
-   - Ejecución del modelo fundacional (LLM) para obtener texto analítico estructurado.
-5. **Fase de Ensamblado (Document Generation):** Inyección del texto generado por IA y los gráficos en la Plantilla institucional de Word.
-6. **Fase de Finalización:** Cierre de procesos, guardado de `auditoria.json` y consolidación de `execution.log`.
+El procesamiento sigue un pipeline unidireccional y secuencial (Single Source of Truth con Trazabilidad Total):
+0. **Blueprint Engine:** Escanea la carpeta del proyecto y genera automáticamente el `blueprint.json`.
+1. **Context Engine:** Valida el `blueprint.json` estrictamente (Pydantic) y lo carga como el `AgentContext` inmutable.
+2. **Ingestión y Normalizer:** Basado en el contexto, lee el Excel crudo, limpia valores nulos o anómalos y parsea datos.
+3. **Truth Engine & Traceability Engine:** Generación del estado maestro `truth.json`. Este JSON es la fuente absoluta de verdad para todo el sistema, y **cada dato está envuelto con metadatos de linaje** (hoja, fila, columna, calculador, timestamp). **El Excel nunca se vuelve a abrir**, minimizando riesgos de corrupción y bloqueos.
+4. **Statistics Engine:** Consume el `truth.json`, calcula todas las métricas derivadas y renderiza gráficos.
+5. **Insight Engine (y RAG):** Vectoriza históricos, cruza el contexto cualitativo con los números exactos del `truth.json` y genera narrativas institucionales.
+6. **Quality Assurance (QA):** Valida la consistencia matemática entre las narrativas generadas y los datos de la fuente de verdad (prevención de alucinaciones).
+7. **Ensamblado (Word Builder & Excel Builder):** Construcción de los artefactos ofimáticos finales consumiendo únicamente el `truth.json` y los textos aprobados por QA.
+8. **Finalización:** Cierre de procesos, guardado de `auditoria.json` y consolidación de `execution.log`.
 
 ## 6. Componentes (Clean Architecture)
-- **Ingestion Controller (Adaptador):** Interfaz de entrada para leer el sistema de archivos o recibir el payload.
-- **Data Processor (Caso de Uso):** Contiene la lógica pura para cruzar datos, calcular variaciones y estructurar la información.
-- **Context Analyzer / RAG Engine (Caso de Uso):** Gestiona el procesamiento de lenguaje natural de los históricos.
-- **LLM Gateway (Puerto/Adaptador):** Abstracción (Interfaz) que encapsula la comunicación con la API de IA (OpenAI, Gemini, Anthropic, etc.).
-- **Document Renderer (Puerto/Adaptador):** Interfaz responsable de interactuar con librerías específicas (ej. `python-docx`, `openpyxl`) para generar los archivos.
-- **Audit Logger (Infraestructura):** Observador transversal que recolecta eventos para la auditoría.
+- **Blueprint Engine & Context Engine (Configuración):** Auto-descubren los archivos, generan el mapa de rutas y levantan el `AgentContext` inmutable.
+- **Ingestion Controller (Adaptador):** Interfaz de entrada para leer el sistema de archivos a partir del contexto.
+- **Normalizer & Truth Engine (Caso de Uso):** Responsables de limpiar y consolidar la única fuente de verdad (`truth.json`).
+- **Traceability Engine (Caso de Uso Transversal):** Adjunta metadatos de procedencia (linaje) a cada dato extraído o calculado, haciendo el sistema 100% auditable.
+- **Statistics Engine (Caso de Uso):** Contiene la lógica pura para cálculos matemáticos.
+- **Insight Engine & QA (Caso de Uso):** Gestiona el razonamiento de IA, NLP, y la validación de integridad narrativa vs datos duros.
+- **LLM Gateway (Puerto/Adaptador):** Abstracción que encapsula la comunicación con la API de IA (OpenAI, Gemini, Anthropic, etc.).
+- **Document Builders (Puerto/Adaptador):** Módulos de ofimática (Word Builder y Excel Builder) que construyen la salida final sin conocer las reglas de negocio.
+- **Audit Logger (Infraestructura):** Observador transversal que recolecta eventos para la auditoría y trazabilidad.
 
 ## 7. Contratos entre módulos (Interfaces)
-- **`IDataExtractor` -> `DataProcessor`:** Retorna un DTO estandarizado con series de tiempo y metadatos operativos, agnóstico a la estructura del Excel original.
-- **`DataProcessor` -> `AIAnalyzer`:** Se comunican mediante un JSON estricto (`StatisticalSummaryDTO`) que contiene exclusivamente hallazgos cuantitativos (ej. incrementos porcentuales, anomalías detectadas).
-- **`AIAnalyzer` -> `DocumentRenderer`:** Envía un diccionario estructurado (`ReportContentDTO`) donde las llaves corresponden exactamente a los marcadores/placeholders de la plantilla Word.
+- **`Excel` -> `Normalizer` -> `Truth Engine`:** Construyen el documento maestro unificado `truth.json` agnóstico al formato del Excel de origen.
+- **`Truth Engine` -> `Statistics Engine` / `Insight Engine` / `Document Builders`:** El `truth.json` es el DTO central y única fuente de datos del que todos los módulos subsecuentes se alimentan.
+- **`Insight Engine` -> `QA` -> `Document Builders`:** Se intercambia un diccionario estructurado (`ReportContentDTO`) con las narrativas validadas, listo para reemplazar los marcadores de la plantilla de Word.
 
 ## 8. blueprint.json esperado
 Archivo de configuración base que guía la ejecución del orquestador:

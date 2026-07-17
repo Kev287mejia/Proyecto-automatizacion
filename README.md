@@ -4,39 +4,45 @@
 
 SIEA es una plataforma de automatización documental y análisis de datos orientada a la generación desatendida de reportes corporativos e informes ejecutivos. Diseñada con una arquitectura de separación de responsabilidades (Clean Architecture), la herramienta permite ingerir grandes volúmenes de datos crudos y transformarlos en inteligencia de negocios estructurada a través de un flujo *Blueprint-Driven*.
 
-## Arquitectura del Sistema
+## Arquitectura del Sistema: Pipeline SIEA
 
-El proyecto abstrae por completo la lógica de negocio del formato de presentación final, garantizando que los datos y el diseño institucional no se acoplen de forma rígida. La orquestación sigue un patrón `Extractor -> Processor -> Builder`.
+El proyecto abstrae por completo la lógica de negocio del formato de presentación final, garantizando que los datos y el diseño institucional no se acoplen de forma rígida. El flujo de ejecución secuencial garantiza una Única Fuente de Verdad (Single Source of Truth) en cada etapa:
+
+```text
+Project (Carpeta de Trabajo)
+       ↓
+Blueprint Engine (Scanner, Analyzers, Validator, Builder)
+       ↓
+blueprint.json (Artefacto en disco)
+       ↓
+Context Engine (Inferencia de metadatos de negocio)
+       ↓
+AgentContext (Objeto inmutable en memoria)
+       ↓
+Processing (Capa Analítica)
+       ├── Data Extractor (Ingesta cruda de Excel)
+       ├── Data Normalizer (Limpieza y estandarización)
+       ├── Truth Engine (Generación de Verdad Estadística Inmutable)
+       └── Insight Engine (Generación de lenguaje natural)
+       ↓
+Word Builder (Inyección de insights en Word)
+       ↓
+Excel Builder (Inyección de datos en Excel)
+       ↓
+QA Engine (Auditoría final del resultado)
+```
 
 ### Módulos Principales
 
-*   **Blueprint Engine (`src/blueprint/`)**: Motor de ingeniería inversa que analiza plantillas institucionales (Word y Excel) preexistentes y extrae un mapa estructural (JSON). Esto asegura que el software trabaje sobre lienzos preaprobados, conservando tipografías, colores, cálculos nativos y dimensiones corporativas exactas.
-*   **Builders (`src/builders/`)**: Inyectores de información especializados y aislados del diseño visual.
-    *   `word_builder.py`: Implementa inyección dinámica a través de marcadores de posición (`{{variables}}`) a nivel de párrafos manipulando la estructura XML subyacente (vía `python-docx`).
-    *   `excel_builder.py`: Inyecta tensores de datos matriciales en hojas designadas por el *Blueprint*, respetando estrictamente las fórmulas iterativas y los gráficos pre-configurados (vía `openpyxl`).
-*   **Orquestador (`src/export/package_builder.py`)**: Cerebro de automatización que gestiona el ciclo de vida del reporte. Controla la ingesta de la carpeta de trabajo, enruta los datos a los motores de procesamiento, orquesta los *Builders* de forma secuencial y despliega la salida en una bóveda histórica jerárquica auditada (ej. `REPORTES_HISTORICOS/YYYY/MM_Mes/`).
-*   **Analysis Engines (`src/analysis/`)**: Capa de abstracción matemática encargada de procesar los datos duros, generar el archivo de estado o verdad estadística (`statistical_truth.json`) y procesar *insights* de alto nivel.
-
-## Estructura del Código
-
-```text
-SIEA/
-├── src/
-│   ├── blueprint/          # Extracción de esquemas JSON desde plantillas físicas
-│   ├── analysis/           # Motores de modelado estadístico e inferencia
-│   ├── builders/           # Generación de binarios inyectados (.xlsx, .docx)
-│   ├── templates/          # Gestor de integridad de documentos base
-│   └── export/             # Package Builder / Orquestador de pipeline
-└── README.md
-```
-
-## Flujo de Orquestación
-
-1.  **Ingesta Transaccional**: El sistema captura datos crudos (`.csv`, `.xlsx`) y carga los modelos de plantillas base.
-2.  **Mapeo Topológico**: El *Blueprint Engine* resuelve las ubicaciones de inyección exactas en el modelo de objetos del documento.
-3.  **Procesamiento Analítico**: Conversión de registros brutos en hallazgos matemáticos estructurados.
-4.  **Inyección y Compilación**: Construcción en paralelo de la matriz de validación (Excel) y la narrativa ejecutiva (Word).
-5.  **Despliegue y Auditoría**: Consolidación de archivos finales, generación del log transaccional y clasificación automatizada en el histórico del servidor.
+*   **Blueprint Engine**: Motor de ingeniería inversa que analiza plantillas institucionales (Word y Excel) preexistentes y extrae un mapa estructural estático (`blueprint.json`).
+*   **Context Engine**: Traduce el blueprint estático en un contexto de negocio vivo (`AgentContext`), deduciendo periodos, metadatos y manteniendo la estructura visual en memoria.
+*   **Processing Module**: El cerebro analítico del sistema, estructurado para garantizar la inmutabilidad de los datos:
+    *   `Data Extractor`: Sabe *cómo* y *de dónde* leer, pero no analiza.
+    *   `Data Normalizer`: Estandariza nulos, formatos de fechas y tipos de datos.
+    *   **`Truth Engine`**: Consolida todos los cálculos en un "Estado de la Verdad" matemático inmutable. Todos los módulos posteriores confían ciegamente en este nodo. No es solo estadística, es el acta notarial de los datos del periodo.
+    *   `Insight Engine`: Transforma los números del *Truth Engine* en conclusiones ejecutivas digeribles y narrativas.
+*   **Builders**: Inyectores especializados que toman los insights y los vacían en las plantillas sin alterar su diseño nativo.
+*   **QA Engine**: Validador final que garantiza que los reportes generados cumplen con las directrices de la institución.
 
 ## Uso del Orquestador
 
@@ -45,8 +51,6 @@ Para disparar el pipeline de compilación documental:
 ```bash
 python -m src.export.package_builder
 ```
-
-El script registrará la estampa de tiempo actual y generará una carpeta autocontenida lista para distribución ejecutiva.
 
 ---
 *Desarrollado desde cero para transformar procesamiento operativo mecánico en automatización estratégica escalable.*

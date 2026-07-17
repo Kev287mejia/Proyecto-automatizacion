@@ -1,7 +1,7 @@
 import os
 import logging
 
-from .scanner import ProjectScanner
+from .scanner import LocalProjectScanner as ProjectScanner, scan_project
 from .word_analyzer import WordAnalyzer
 from .excel_analyzer import ExcelAnalyzer
 from .builder import BlueprintBuilder
@@ -26,14 +26,15 @@ class BlueprintEngine:
         logging.info(f"Iniciando Blueprint Engine en directorio: {self.inputs_dir}")
         
         # 1. Escanear el proyecto
-        inventory = self.scanner.scan()
+        # Usamos compatibilidad con diccionarios temporalmente para no romper validator.py/builder.py
+        inventory = scan_project(self.inputs_dir)
 
         # 2. Validar que todo tenga sentido
         self.validator.validate(inventory)
 
         # 3. Extraer información (Analyzers)
-        word_target = inventory.get("word_template")
-        excel_target = inventory.get("excel_template")
+        word_target = inventory.get("plantilla_word")
+        excel_target = inventory.get("plantilla_excel")
         
         word_data = None
         if word_target:
@@ -47,7 +48,7 @@ class BlueprintEngine:
 
         # 4. Construir JSON y Guardarlo en disco (Builder)
         output_path = os.path.join(self.inputs_dir, output_name)
-        self.builder.build_and_save(word_data, excel_data, output_path)
+        self.builder.build_and_save(word_data, excel_data, output_path, inventory)
 
         return output_path
 
