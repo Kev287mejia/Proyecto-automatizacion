@@ -18,17 +18,32 @@ def test_detector_cleans_unnamed():
     
     # Should drop Unnamed with all NaNs and normalize names
     assert "Unnamed: 0" not in cleaned.columns
-    assert list(cleaned.columns) == ["nombre", "edad"]
+    assert list(cleaned.columns) == ["Nombre", "Edad"]
 
 def test_detector_infer_types():
+    # Expandimos las columnas para que todas tengan 20 filas (excepto Vacío que será 20 None)
     df = pd.DataFrame({
-        "nombre": ["A", "B"],
-        "edad": ["10", "20"]
+        "col1": [None] * 20,
+        "col2": ["si", "NO"] * 10,
+        "col3": ["$100", "€200"] * 10,
+        "col4": ["15%", "20.5%"] * 10,
+        "col5": ["2023-01-01", "2024-02-15"] * 10,
+        "col6": ["10", "1,500.50"] * 10,
+        "col7": ["A", "B"] * 10,
+        "col8": [f"Unic_{i}" for i in range(20)]
     })
+    
     detector = DatatypeDetector()
     types = detector.infer(df)
-    assert types["edad"] == "numeric"
-    assert types["nombre"] == "string"
+    
+    assert types["col1"] == "Vacío"
+    assert types["col2"] == "Booleano"
+    assert types["col3"] == "Moneda"
+    assert types["col4"] == "Porcentaje"
+    assert types["col5"] == "Fecha"
+    assert types["col6"] == "Número"
+    assert types["col7"] == "Categoría"
+    assert types["col8"] == "Texto"
 
 def test_normalizer_cleans_whitespace():
     df = pd.DataFrame({
