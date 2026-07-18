@@ -3,7 +3,9 @@ import logging
 
 class RowNormalizer:
     """
-    Responsabilidad: Transformar las filas (eliminar vacías, estandarizar texto).
+    Fase 6: Row Normalizer
+    Responsabilidad: Transformar las filas y convertir la estructura de columnas 
+    en un formato uniforme (claves en minúscula).
     """
 
     def __init__(self):
@@ -15,11 +17,18 @@ class RowNormalizer:
         """
         self.logger.info("Normalizando filas y limpiando valores...")
         
+        if df.empty:
+            return df
+            
         # Eliminar filas completamente vacías
         initial_len = len(df)
-        df = df.dropna(how='all')
+        df = df.dropna(how='all').copy()
         if len(df) < initial_len:
             self.logger.info(f"Purgadas {initial_len - len(df)} filas vacías.")
+
+        # Estandarizar nombres de columnas (minúsculas, reemplazar espacios) para que 
+        # al exportar a JSON los keys tengan formato uniforme, ej: {"nombre": "...", "edad": 21}
+        df.columns = [str(col).strip().lower().replace(' ', '_') for col in df.columns]
 
         # Limpiar strings (strip)
         for col in df.columns:
@@ -31,3 +40,14 @@ class RowNormalizer:
 
         self.logger.info("Normalización de filas finalizada.")
         return df
+
+    def to_records(self, df: pd.DataFrame) -> list:
+        """
+        Convierte cada fila en una estructura uniforme de diccionario.
+        Ejemplo: {"nombre": "...", "sexo": "Femenino", "edad": 21}
+        """
+        # Reemplazamos <NA> de pandas con None para diccionarios puros de Python
+        df_clean = df.replace({pd.NA: None})
+        # Tambien convertimos float NaN a None
+        df_clean = df_clean.where(pd.notnull(df_clean), None)
+        return df_clean.to_dict(orient="records")
